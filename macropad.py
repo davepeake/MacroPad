@@ -9,16 +9,6 @@ import grp
 import os
 
 
-if "--no-i3" in sys.argv:
-    I3_ENABLED = False
-else:
-    try:
-        import i3msg as i3
-
-        I3_ENABLED = True
-    except:
-        I3_ENABLED = False
-
 VERSION = 1.1
 DEBUG = False
 ASSIST_MODE = False
@@ -67,6 +57,8 @@ def detectDevice():
     # check if user is part of `input` group
     groups = [grp.getgrgid(g).gr_name for g in os.getgroups()]
 
+    print(groups)
+
     if not NO_GROUP and not "input" in groups:
         print("WARNING: You are NOT a member of the `input` group!")
         print("MacroPad cannot detect devices.")
@@ -90,6 +82,7 @@ def detectDevice():
     else:
         devices = [os.path.join(baseDir, p) for p in os.listdir(baseDir)]
 
+    print(devices)
     print("** A total of %i devices were detected. **\n" % len(devices))
     print("MacroPad will now help you select the device you want to config.")
     print("\n1) Press ENTER")
@@ -367,6 +360,7 @@ def handleKey(event, debug=False):
     global HOT_LAYER
     global WAIT_TIME
 
+
     now = time.time()
     last_hit = now
 
@@ -610,9 +604,12 @@ def runCommand(command, event=None):
 
 def keyInput(event, keycodes, state):
     for keycode in keycodes:
-        UI.write(evdev.ecodes.EV_KEY, evdev.ecodes.ecodes[keycode], state)
-
+        #UI.write(evdev.ecodes.EV_KEY, evdev.ecodes.KEY_X, 1)
+        #UI.write(evdev.ecodes.EV_KEY, evdev.ecodes.KEY_X, 0)
+        ret = UI.write(evdev.ecodes.EV_KEY, evdev.ecodes.ecodes[keycode], state)
+    
     UI.syn()
+
 
     return 1
 
@@ -639,6 +636,7 @@ def getDeviceViaName(name):
     return None
 
 def listen(devicePath):
+    print('devicepath', devicePath)
     # open the device via evdev
     if USING_DEVICE_NAME:
         while True:
@@ -671,7 +669,7 @@ def listen(devicePath):
             if event.type == evdev.ecodes.EV_KEY:
                 keyEvent = evdev.categorize(event)
 
-                # print(keyEvent.keycode)
+                #print(keyEvent.keycode)
 
                 fired = handleKey(keyEvent, debug=DEBUG)
 
@@ -691,6 +689,7 @@ def listen(devicePath):
     except KeyboardInterrupt:
         print("Interrupt.")
     except OSError:
+        print('OS Error')
         return 1
     except Exception as e:
         print(e)
@@ -726,7 +725,9 @@ def main(devicePath):
     if I3_ENABLED:
         i3.subscribe(['window'], focusHandler)
 
-    UI = evdev.uinput.UInput()
+    #UI = evdev.uinput.UInput()
+    kb = evdev.InputDevice('/dev/input/event15')
+    UI = evdev.uinput.UInput.from_device(kb, name='keyboard_device')
 
     while listen(devicePath):
         print("Reconnecting...")
@@ -745,6 +746,8 @@ def usage():
 
 
 if __name__ == "__main__":
+    I3_ENABLED = False
+
     if "--assist" in sys.argv:
         ASSIST_MODE = True
 
